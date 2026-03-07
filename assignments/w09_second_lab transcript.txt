@@ -1,0 +1,173 @@
+w09_second_lab.md
+File
+Follow the instructions in the .md file
+Thought for a few seconds
+
+Yep — per the TMF, Step 0: Intake is to get the codebase from you first. 
+
+w09_second_lab
+
+Please provide the codebase
+
+Pick one:
+
+Upload the project files (best if it’s more than a few files), or
+
+Paste the relevant code here (if it’s small / just a couple files)
+
+Also include (so I can refactor safely without breaking behavior)
+
+Language + version (e.g., Python 3.12, Node 20, Java 17, etc.)
+
+How to run it (the exact command)
+
+How to run tests (or say “no tests yet”)
+
+What “messy” means to you (choose any): hard to read, bugs, duplication, huge files, bad structure, slow, inconsistent style
+
+What must not change (public APIs, output format, CLI args, endpoints, file formats, etc.)
+
+Once you drop the code in, I’ll do the “Baseline Understanding” pass: map entry points + modules and call out the top 5 hotspots with evidence, then propose a phased refactor plan with checkpoints.
+
+Sources
+sentences.py
+Python
+Python, sentences.py, no tests yet, messy means bad layout, everything may change.
+Thought for 10s
+
+Got it — you’ve provided enough code + context to start (Checkpoint 0) per the TMF. 
+
+w09_second_lab
+
+Step 1: Baseline understanding (Checkpoint 1)
+What the program does
+
+sentences.py builds and prints one random sentence of the form:
+
+<determiner> <noun> <verb> <prepositional phrase>. 
+
+sentences
+
+Entry point
+
+Right now it runs immediately because it calls main() at the bottom of the file. 
+
+sentences
+
+Top pain points (with evidence)
+
+Layout / spacing issues: functions run together with no blank lines, and some defs are “stacked” (e.g., get_noun, get_verb, get_prep_phrase). 
+
+sentences
+
+Global mutable data: word lists are globals; harder to reuse or test in isolation. 
+
+sentences
+
+No if __name__ == "__main__": guard: importing this file would immediately print a sentence. 
+
+sentences
+
+Repetition: each get_* function is the same pattern (random.choice(list)), which invites cleanup. 
+
+sentences
+
+Low testability: no way to inject a seeded RNG to make outputs deterministic. 
+
+sentences
+
+Checkpoint 1 achieved: current state + clear target (fix layout/structure). 
+
+w09_second_lab
+
+Step 2: Lock behavior (Checkpoint 2)
+
+You said “everything may change,” so we don’t need strict behavior preservation — but having a tiny safety net is still helpful. The simplest “characterization” check is: with a fixed seed, output should be deterministic.
+
+I’ll structure the refactor so make_sentence(rng=...) can accept a seeded RNG.
+
+Step 3–4: Mechanical cleanup + structural refactor
+Refactored sentences.py (clean layout, clearer structure, testable)
+"""
+Generate a random sentence.
+
+Sentence format:
+    <determiner> <noun> <verb> <prepositional phrase>.
+"""
+
+from __future__ import annotations
+
+import random
+from dataclasses import dataclass
+from typing import Sequence
+
+
+@dataclass(frozen=True)
+class WordBank:
+    determiners: Sequence[str]
+    nouns: Sequence[str]
+    verbs: Sequence[str]
+    prepositional_phrases: Sequence[str]
+
+
+DEFAULT_WORDS = WordBank(
+    determiners=("Some", "Many", "A few", "A couple", "Sixty nine"),
+    nouns=("cats", "dogs", "turtles", "kids", "pencils"),
+    verbs=("thought", "died", "ate", "balled up", "will get rizzed up", "nae-naed", "skrrted"),
+    prepositional_phrases=("on the game", "during his class", "in the fridge", "down the well", "on the court"),
+)
+
+
+def choose(rng: random.Random, options: Sequence[str]) -> str:
+    """Return one random element from options."""
+    if not options:
+        raise ValueError("options must not be empty")
+    return rng.choice(list(options))
+
+
+def make_sentence(words: WordBank = DEFAULT_WORDS, rng: random.Random | None = None) -> str:
+    """Create and return a randomized sentence."""
+    rng = rng or random.Random()
+
+    determiner = choose(rng, words.determiners)
+    noun = choose(rng, words.nouns)
+    verb = choose(rng, words.verbs)
+    prep = choose(rng, words.prepositional_phrases)
+
+    return f"{determiner} {noun} {verb} {prep}."
+
+
+def main() -> None:
+    print(make_sentence())
+
+
+if __name__ == "__main__":
+    main()
+What improved (specifically for “bad layout”)
+
+Consistent spacing + grouping
+
+Clear entry point with if __name__ == "__main__":
+
+Word lists packaged into a WordBank (cleaner boundaries)
+
+Deterministic runs possible via rng=random.Random(0) (enables tests later)
+
+Optional: tiny test file (if/when you add pytest)
+
+Create test_sentences.py:
+
+import random
+from sentences import make_sentence
+
+def test_make_sentence_is_deterministic_with_seed():
+    rng = random.Random(123)
+    s1 = make_sentence(rng=rng)
+
+    rng = random.Random(123)
+    s2 = make_sentence(rng=rng)
+
+    assert s1 == s2
+    assert s1.endswith(".")
+
+If you want, I can also tune this to match your course style requirements (BYU-I often wants very specific function names/signatures).
